@@ -40,66 +40,141 @@
 
 .movie-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 20px;
-  margin: 20px 0;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 30px;
 }
 
 .movie-card {
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  transition: transform 0.3s;
-}
-
-.movie-card:hover {
-  transform: translateY(-5px);
-}
-
-.movie-card img {
-  width: 100%;
-  border-radius: 5px;
-}
-
-.movie-poster {
-  width: 100%;
-  height: 300px;
-  object-fit: cover;
-}
-
-.poster-placeholder {
-  width: 100%;
-  height: 300px;
-  background-color: #f0f0f0;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #999;
+  height: 320px;
+}
+
+.movie-poster-container {
+  position: relative;
+  width: 185px;
+  flex-shrink: 0;
 }
 
 .movie-info {
-  padding: 15px;
+  flex: 1;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
-
 
 .movie-title {
-  margin: 0 0 5px 0;
-  font-size: 16px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  margin: 0 0 12px 0;
+  font-size: 20px;
+  font-weight: 600;
 }
 
-.movie-year, .movie-rating {
-  margin: 5px 0;
+.movie-release-date {
   color: #666;
+  margin-bottom: 12px;
   font-size: 14px;
+}
+
+.movie-genres {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.movie-genre {
+  background: #f0f0f0;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #555;
+}
+
+.movie-overview {
+  flex: 1;
+  margin: 0 0 15px 0;
+  color: #444;
+  font-size: 14px;
+  line-height: 1.5;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+}
+
+.movie-rating-container {
+  margin-top: auto;
+}
+
+.movie-rating-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.movie-rating-value {
+  font-size: 14px;
+  color: #666;
+  min-width: 80px;
+}
+
+.movie-previous-rating {
+  margin-top: 8px;
+  font-size: 14px;
+  color: #666;
+}
+
+.movie-poster {
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+}
+
+.rating-circle {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: bold;
+  font-size: 14px;
+  border: 2px solid white;
+}
+
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
 }
 
 .pagination-container {
   display: flex;
   justify-content: center;
   margin: 30px 0;
+}
+
+.ant-tabs {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.genres {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 10px 0;
+}
+
+.genres span {
+  background: #f0f0f0;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
 }
 
 .error {
@@ -158,7 +233,6 @@ img {
   font-size: 16px;
 }
 
-
 .error-message {
   color: #ff4d4f;
   margin: 20px 0;
@@ -194,8 +268,43 @@ img {
   text-align: center;
 }
 
+.genre-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.genre-tag {
+  background-color: #f0f0f0;
+  color: #555;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  display: inline-block;
+  border: 1px solid #ddd;
+}
+
 @keyframes shimmer {
   to {
     background-position: -200% 0;
   }
+}
+
+/* Стили для рейтинга фильмов */
+.ant-rate .ant-rate-star:not(.ant-rate-star-full) .ant-rate-star-first,
+.ant-rate .ant-rate-star:not(.ant-rate-star-full) .ant-rate-star-second {
+  color: rgba(0, 0, 0, 0.15) !important;
+  opacity: 1 !important;
+}
+
+.ant-rate .ant-rate-star-full .ant-rate-star-first,
+.ant-rate .ant-rate-star-full .ant-rate-star-second {
+  color: #faad14 !important;
+  opacity: 1 !important;
+}
+
+.movie-rate {
+  font-size: 16px;
 }
