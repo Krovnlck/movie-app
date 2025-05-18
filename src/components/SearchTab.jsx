@@ -22,11 +22,11 @@ const SearchTab = () => {
     <div className="search-tab">
       <input
         value={query}
-        onChange={(e) => setQuery(e.target.value)}
+        onChange={e => setQuery(e.target.value)}
         placeholder="Search movies..."
       />
       <button onClick={handleSearch}>Search</button>
-      
+
       <MovieList movies={movies} onRate={handleRate} />
     </div>
   );

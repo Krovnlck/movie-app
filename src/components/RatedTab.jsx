@@ -1,5 +1,5 @@
 import { useState, useEffect, useContext } from 'react';
-import { TmdbService } from '../services/tmdb-service'
+import { TmdbService } from '../services/tmdb-service';
 import { AppContext } from '../context/AppContext';
 import MovieList from './MovieList';
 

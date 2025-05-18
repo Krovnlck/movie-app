@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useContext, useMemo } from 'react';
 import { Pagination, Spin, Tabs } from 'antd';
 import { debounce } from 'lodash';
-import { TmdbService } from './services/tmdb-service'
+import { TmdbService } from './services/tmdb-service';
 import MovieList from './components/MovieList';
 import { AppContext } from './context/AppContext';
 import './App.css';
@@ -11,29 +11,37 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [query, setQuery] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(0);
+  const [pagination, setPagination] = useState({
+    search: { page: 1, total: 0 },
+    rated: { page: 1, total: 0 },
+  });
   const [activeTab, setActiveTab] = useState('search');
   const [ratedMovies, setRatedMovies] = useState([]);
+  const [movieRatings, setMovieRatings] = useState({});
   const { sessionId, genres } = useContext(AppContext);
-  
+
   const tmdbService = useMemo(() => new TmdbService(), []);
 
-  const loadPopularMovies = useCallback(async (page) => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await tmdbService.getPopularMovies(page);
-      setMovies(data.results);
-      setTotalPages(data.total_pages);
-      setCurrentPage(page);
-    } catch (err) {
-      setError(err.message);
-      setMovies([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [tmdbService]);
+  const loadPopularMovies = useCallback(
+    async page => {
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await tmdbService.getPopularMovies(page);
+        setMovies(data.results);
+        setPagination(prev => ({
+          ...prev,
+          search: { page, total: data.total_pages },
+        }));
+      } catch (err) {
+        setError(err.message);
+        setMovies([]);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [tmdbService]
+  );
 
   const debouncedSearchRef = useRef(
     debounce(async (searchQuery, page) => {
@@ -46,10 +54,12 @@ function App() {
         setLoading(true);
         setError(null);
         const data = await tmdbService.searchMovies(searchQuery, page);
-        
+
         setMovies(data.results);
-        setTotalPages(data.total_pages);
-        setCurrentPage(page);
+        setPagination(prev => ({
+          ...prev,
+          search: { page, total: data.total_pages },
+        }));
       } catch (err) {
         setError(err.message);
         setMovies([]);
@@ -63,48 +73,90 @@ function App() {
     debouncedSearchRef.current(query, page);
   }, []);
 
-  const handleSearchChange = (e) => {
+  const handleSearchChange = e => {
     const newQuery = e.target.value;
     setQuery(newQuery);
-    setCurrentPage(1);
+    setPagination(prev => ({
+      ...prev,
+      search: { ...prev.search, page: 1 },
+    }));
     handleSearch(newQuery, 1);
   };
 
-  const handlePageChange = (page) => {
-    setCurrentPage(page);
-    if (query.trim()) {
-      handleSearch(query, page);
+  const handleTabChange = (newTab) => {
+    setActiveTab(newTab);
+    if (newTab === 'search') {
+      if (!query.trim()) {
+        loadPopularMovies(pagination.search.page);
+      } else {
+        handleSearch(query, pagination.search.page);
+      }
     } else {
-      loadPopularMovies(page);
+      fetchRatedMovies(pagination.rated.page);
     }
   };
 
-  const fetchRatedMovies = useCallback(async () => {
-    if (!sessionId) return;
-    
-    try {
-      setLoading(true);
-      const data = await tmdbService.getRatedMovies(sessionId);
-      setRatedMovies(data.results || []);
-    } catch (err) {
-      console.error('Failed to fetch rated movies:', err);
-      setRatedMovies([]); 
-      setError('Failed to load your rated movies');
-    } finally {
-      setLoading(false);
+  const handlePageChange = page => {
+    setPagination(prev => ({
+      ...prev,
+      [activeTab]: { ...prev[activeTab], page },
+    }));
+
+    if (activeTab === 'search') {
+      if (query.trim()) {
+        handleSearch(query, page);
+      } else {
+        loadPopularMovies(page);
+      }
+    } else {
+      fetchRatedMovies(page);
     }
-  }, [sessionId, tmdbService]);
+  };
 
   const handleRateMovie = async (movieId, rating) => {
     try {
       await tmdbService.rateMovie(movieId, rating, sessionId);
+      setMovieRatings(prev => ({ ...prev, [movieId]: rating }));
+
       if (activeTab === 'rated') {
-        await fetchRatedMovies();
+        await fetchRatedMovies(pagination.rated.page);
       }
     } catch (err) {
       setError(err.message);
+      setMovieRatings(prev => ({ ...prev, [movieId]: prev[movieId] }));
     }
   };
+
+  const fetchRatedMovies = useCallback(
+    async (page = 1) => {
+      if (!sessionId) return;
+
+      try {
+        setLoading(true);
+        const data = await tmdbService.getRatedMovies(sessionId);
+        setRatedMovies(data.results || []);
+        setPagination(prev => ({
+          ...prev,
+          rated: { page, total: data.total_pages },
+        }));
+
+        const newRatings = {};
+        data.results?.forEach(movie => {
+          if (movie.rating) {
+            newRatings[movie.id] = movie.rating;
+          }
+        });
+        setMovieRatings(prev => ({ ...prev, ...newRatings }));
+      } catch (err) {
+        console.error('Failed to fetch rated movies:', err);
+        setRatedMovies([]);
+        setError('Failed to load your rated movies');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [sessionId, tmdbService]
+  );
 
   useEffect(() => {
     const debouncedSearch = debouncedSearchRef.current;
@@ -114,20 +166,25 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (activeTab === 'rated') {
-      fetchRatedMovies();
-    }
-  }, [activeTab, fetchRatedMovies]);
+    if (!activeTab) return;
 
-  useEffect(() => {
-    if (activeTab === 'search' && !query.trim()) {
-      loadPopularMovies(1);
+    if (activeTab === 'rated') {
+      fetchRatedMovies(pagination.rated.page);
+    } else if (activeTab === 'search') {
+      if (!query.trim()) {
+        loadPopularMovies(pagination.search.page);
+      } else {
+        handleSearch(query, pagination.search.page);
+      }
     }
-  }, [activeTab, loadPopularMovies, query]);
+  }, [activeTab, fetchRatedMovies, loadPopularMovies, handleSearch, query, pagination.search.page, pagination.rated.page]);
 
   if (!sessionId) {
     return (
-      <div className="app-loading" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+      <div
+        className="app-loading"
+        style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
+      >
         <Spin size="large">
           <div style={{ padding: '20px', color: '#1890ff' }}>Loading application...</div>
         </Spin>
@@ -139,7 +196,7 @@ function App() {
     <div className="app">
       <Tabs
         activeKey={activeTab}
-        onChange={setActiveTab}
+        onChange={handleTabChange}
         items={[
           {
             key: 'search',
@@ -166,19 +223,20 @@ function App() {
 
                 {error && <div className="error-message">{error}</div>}
 
-                <MovieList 
-                  movies={movies} 
+                <MovieList
+                  movies={movies}
                   genres={genres}
                   onRate={handleRateMovie}
                   loading={loading}
                   error={error}
+                  ratings={movieRatings}
                 />
 
-                {movies.length > 0 && totalPages > 1 && (
+                {movies.length > 0 && pagination.search.total > 1 && (
                   <div className="pagination-container">
                     <Pagination
-                      current={currentPage}
-                      total={totalPages * 10}
+                      current={pagination.search.page}
+                      total={pagination.search.total * 10}
                       onChange={handlePageChange}
                       showSizeChanger={false}
                       disabled={loading}
@@ -203,14 +261,28 @@ function App() {
                     {ratedMovies.length === 0 ? (
                       <div className="no-results">You haven't rated any movies yet</div>
                     ) : (
-                      <MovieList 
-                        movies={ratedMovies} 
-                        genres={genres}
-                        onRate={handleRateMovie}
-                        showRating
-                        loading={loading}
-                        error={error}
-                      />
+                      <>
+                        <MovieList
+                          movies={ratedMovies}
+                          genres={genres}
+                          onRate={handleRateMovie}
+                          showRating
+                          loading={loading}
+                          error={error}
+                          ratings={movieRatings}
+                        />
+                        {pagination.rated.total > 1 && (
+                          <div className="pagination-container">
+                            <Pagination
+                              current={pagination.rated.page}
+                              total={pagination.rated.total * 10}
+                              onChange={handlePageChange}
+                              showSizeChanger={false}
+                              disabled={loading}
+                            />
+                          </div>
+                        )}
+                      </>
                     )}
                   </>
                 )}
